@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Challenger | Functional Hub</title>
+    <style>
+        :root { --yari-siyah: #121212; --sari: #ffcc00; --gri: #222; --metin: #e0e0e0; }
+        body { margin: 0; font-family: sans-serif; background: #000; color: var(--metin); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* GİRİŞ EKRANI */
+        #auth-panel { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:999; display:flex; align-items:center; justify-content:center; }
+        .box { background: var(--yari-siyah); padding: 30px; border-radius: 10px; border: 1px solid var(--gri); width: 300px; text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid var(--gri); color: #fff; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: var(--sari); border: none; font-weight: bold; cursor: pointer; }
+
+        /* ANA YAPI */
+        #main-app { display: none; width: 100%; height: 100%; }
+        .rail { width: 70px; background: #000; border-right: 1px solid var(--gri); display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 10px; }
+        .sidebar { width: 240px; background: var(--yari-siyah); border-right: 1px solid var(--gri); display: flex; flex-direction: column; }
+        .chat { flex-grow: 1; display: flex; flex-direction: column; background: #080808; }
+        
+        /* ICONS & CHANNELS */
+        .icon { width: 45px; height: 45px; background: var(--gri); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+        .icon.active { border-radius: 12px; border: 2px solid var(--sari); color: var(--sari); }
+        .channel-btn { padding: 10px; margin: 2px 10px; border-radius: 5px; cursor: pointer; }
+        .channel-btn:hover { background: var(--gri); }
+        .channel-btn.active { color: var(--sari); background: #1a1a1a; }
+
+        /* MESAJLAR */
+        #messages { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        .msg { margin-bottom: 10px; }
+        .msg b { color: var(--sari); }
+        .gemini-reply { color: #4285f4; border-left: 2px solid #4285f4; padding-left: 10px; margin: 10px 0; }
+        
+        .input-bar { padding: 20px; border-top: 1px solid var(--gri); }
+    </style>
+</head>
+<body>
+
+    <div id="auth-panel">
+        <div class="box">
+            <h2 style="color:var(--sari)">CHALLENGER</h2>
+            <input type="email" id="email" placeholder="E-posta">
+            <input type="password" id="pass" placeholder="Şifre">
+            <button onclick="auth()">GİRİŞ / KAYIT</button>
+            <p style="font-size:10px; color:gray; margin-top:10px;">*İlk kez giriyorsanız bu bilgilerle kaydolursunuz.</p>
+        </div>
+    </div>
+
+    <div id="main-app">
+        <div style="display:flex; height:100%;">
+            <div class="rail" id="server-rail">
+                <div class="icon active" onclick="switchServer(this, 'Ana Sunucu')">C</div>
+                <div class="icon" onclick="addServer()" style="color:var(--sari)">+</div>
+            </div>
+
+            <div class="sidebar">
+                <div style="padding:20px; font-weight:bold; border-bottom:1px solid var(--gri)" id="server-title">Ana Sunucu</div>
+                <div id="channel-list" style="padding-top:10px;">
+                    <div class="channel-btn active" onclick="switchChannel(this, 'genel-sohbet')"># genel-sohbet</div>
+                    <div class="channel-btn" onclick="switchChannel(this, 'yardım')"># yardım</div>
+                </div>
+                <div style="margin-top:auto; padding:15px; font-size:12px; border-top:1px solid var(--gri)">
+                    👤 <span id="my-name">Kullanıcı</span> | <a href="#" onclick="location.reload()" style="color:red">Çıkış</a>
+                </div>
+            </div>
+
+            <div class="chat">
+                <div id="messages"></div>
+                <div class="input-bar">
+                    <input type="text" id="chat-in" placeholder="Mesaj yazın (#gemini komutu aktiftir)..." onkeypress="send(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = "";
+
+        // GİRİŞ / KAYIT MANTIĞI
+        function auth() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('pass').value;
+            if(!e || !p) return alert("Bilgileri girin!");
+
+            // Demo olduğu için girilen her bilgiyi 'hesap' kabul ediyoruz
+            localStorage.setItem('user', e);
+            currentUser = e.split('@')[0];
+            document.getElementById('my-name').innerText = currentUser;
+            document.getElementById('auth-panel').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            
+            addMsg("Sistem", `Hoş geldin ${currentUser}! Sohbet kanalına bağlandın.`);
+        }
+
+        // MESAJ GÖNDERME
+        function send(e) {
+            if(e.key === 'Enter') {
+                const input = document.getElementById('chat-in');
+                const val = input.value.trim();
+                if(!val) return;
+
+                addMsg(currentUser, val);
+
+                // Gemini Bot Kontrolü
+                if(val.includes('#gemini')) {
+                    setTimeout(() => {
+                        addMsg("Gemini Bot", `Merhaba @${currentUser}, sana nasıl yardımcı olabilirim? Tüm sistemlerin aktif çalışıyor!`, true);
+                    }, 700);
+                }
+
+                input.value = "";
+            }
+        }
+
+        function addMsg(user, text, isAi = false) {
+            const box = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = isAi ? "msg gemini-reply" : "msg";
+            div.innerHTML = `<b>${user}:</b> ${text}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // KANAL DEĞİŞTİRME
+        function switchChannel(el, name) {
+            document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('messages').innerHTML = "";
+            addMsg("Sistem", `#${name} kanalına giriş yapıldı.`);
+        }
+
+        // SUNUCU EKLEME
+        function addServer() {
+            const sName = prompt("Sunucu Adı:");
+            if(sName) {
+                const rail = document.getElementById('server-rail');
+                const newS = document.createElement('div');
+                newS.className = "icon";
+                newS.innerText = sName[0].toUpperCase();
+                newS.onclick = function() { switchServer(this, sName); };
+                rail.insertBefore(newS, rail.lastElementChild);
+            }
+        }
+
+        function switchServer(el, name) {
+            document.querySelectorAll('.icon').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('server-title').innerText = name;
+            document.getElementById('messages').innerHTML = "";
+            addMsg("Sistem", `${name} sunucusuna bağlandınız.`);
+        }
+    </script>
+</body>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io(); // Sunucuya bağlan
+
+    // send(event) fonksiyonunu güncelle
+    function send(e) {
+        if(e.key === 'Enter') {
+            const input = document.getElementById('chat-in');
+            const val = input.value.trim();
+            if(!val) return;
+
+            // Mesajı sunucuya gönder (Sunucu da herkese dağıtacak)
+            socket.emit('chat message', {
+                user: currentUser,
+                text: val
+            });
+
+            input.value = "";
+        }
+    }
+
+    // Sunucudan gelen mesajı yakala ve ekrana yaz
+    socket.on('chat message', (data) => {
+        const isGemini = data.text.includes('#gemini');
+        addMsg(data.user, data.text, false);
+
+        // Eğer mesajda #gemini varsa ve mesajı atan sen isen bot cevap versin
+        if(isGemini && data.user === currentUser) {
+            setTimeout(() => {
+                socket.emit('chat message', {
+                    user: "Gemini Bot",
+                    text: `Merhaba @${data.user}, sistemler aktif!`
+                });
+            }, 500);
+        }
+    });
+</script>
+</html>
