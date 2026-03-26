@@ -3,125 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenger Projesi - Canlı</title>
+    <title>Challenger Chat - v1.0</title>
     <style>
-        body { background: #2f3136; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 280px; background: #202225; display: flex; flex-direction: column; border-right: 1px solid #1e1f22; }
-        #chat-area { flex: 1; display: flex; flex-direction: column; background: #36393f; }
+        * { box-sizing: border-box; }
+        body { background: #36393f; color: #dcddde; font-family: 'Whitney', 'Helvetica Neue', sans-serif; margin: 0; display: flex; height: 100vh; }
         
-        /* Mesaj Alanı */
+        /* Sol Menü */
+        #sidebar { width: 260px; background: #2f3136; display: flex; flex-direction: column; border-right: 1px solid #202225; }
+        .sidebar-header { padding: 20px; font-weight: bold; color: white; border-bottom: 1px solid #26272b; display: flex; justify-content: space-between; }
+        .logout-btn { cursor: pointer; color: #f04747; font-size: 12px; }
+
+        /* Arkadaş Listesi Alanı */
+        .friends-container { padding: 20px; flex: 1; }
+        .friends-title { font-size: 12px; font-weight: bold; color: #8e9297; margin-bottom: 10px; text-transform: uppercase; }
+        #friends-list { list-style: none; padding: 0; margin: 0; }
+        #friends-list li { padding: 8px; border-radius: 4px; margin-bottom: 2px; background: transparent; transition: 0.2s; }
+        #friends-list li:hover { background: #393c43; }
+
+        /* Arkadaş Ekleme Alt Bar */
+        .add-friend-bar { padding: 15px; background: #292b2f; }
+        .add-input { width: 100%; background: #202225; border: none; color: white; padding: 8px; border-radius: 4px; margin-bottom: 5px; }
+        .add-btn { width: 100%; background: #3ba55e; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+        /* Mesajlaşma Alanı */
+        #chat-main { flex: 1; display: flex; flex-direction: column; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; list-style: none; margin: 0; }
-        .msg { background: #40444b; padding: 10px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #5865f2; }
+        .message-item { margin-bottom: 15px; border-bottom: 1px solid #40444b; padding-bottom: 8px; }
+        .user-tag { color: #fff; font-weight: bold; margin-right: 8px; }
         
-        /* Giriş Alanı */
-        #input-area { padding: 20px; background: #2f3136; }
-        #chat-in { width: 95%; background: #40444b; border: none; color: white; padding: 12px; border-radius: 5px; outline: none; }
+        .input-box { padding: 20px; background: #36393f; }
+        #msg-input { width: 100%; background: #40444b; border: none; color: #dcddde; padding: 15px; border-radius: 8px; outline: none; }
 
-        /* Arkadaşlık Bölümü */
-        .friends-box { padding: 20px; border-top: 1px solid #2f3136; margin-top: auto; }
-        #friends-list { list-style: none; padding: 0; }
-        #friends-list li { background: #4f545c; padding: 8px; border-radius: 4px; margin-bottom: 5px; font-size: 14px; }
-        .add-friend-ui { display: flex; gap: 5px; margin-top: 10px; }
-        .add-friend-ui input { flex: 1; background: #202225; border: 1px solid #444; color: white; padding: 5px; border-radius: 3px; }
-        .add-friend-ui button { background: #3ba55e; border: none; color: white; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; }
-
-        /* Bildirim Modalı */
-        #request-modal { display: none; position: fixed; top: 20px; right: 20px; background: #5865f2; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 9999; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        /* Onay Kutusu (Modal) */
+        #request-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2f3136; border: 2px solid #7289da; padding: 25px; border-radius: 8px; z-index: 1000; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div style="padding: 20px; border-bottom: 1px solid #2f3136;">
-            <h2 style="margin:0; color: #5865f2;">CHALLENGER</h2>
-            <p style="font-size: 12px; color: #b9bbbe;">Hoş geldin: <strong id="my-name">...</strong></p>
+        <div class="sidebar-header">
+            <span>CHALLENGER</span>
+            <span class="logout-btn" onclick="logout()">Çıkış Yap</span>
+        </div>
+        
+        <div class="friends-container">
+            <div class="friends-title">Arkadaşlarım</div>
+            <ul id="friends-list">
+                </ul>
         </div>
 
-        <div class="friends-box">
-            <h4 style="margin: 0 0 10px 0; color: #8e9297;">ARKADAŞLAR</h4>
-            <ul id="friends-list"></ul>
-            <div class="add-friend-ui">
-                <input type="text" id="target-user" placeholder="Kullanıcı adı...">
-                <button onclick="sendRequest()">EKLE</button>
-            </div>
+        <div class="add-friend-bar">
+            <input type="text" id="target-name" class="add-input" placeholder="Kullanıcı adı...">
+            <button class="add-btn" onclick="sendReq()">Arkadaş Ekle</button>
         </div>
     </div>
 
-    <div id="chat-area">
+    <div id="chat-main">
         <ul id="messages"></ul>
-        <div id="input-area">
-            <input type="text" id="chat-in" placeholder="Mesaj gönder..." onkeypress="handleChat(event)">
+        <div class="input-box">
+            <input type="text" id="msg-input" placeholder="Mesaj gönder..." onkeypress="checkEnter(event)">
         </div>
     </div>
 
     <div id="request-modal">
-        <p id="request-msg" style="margin:0 0 15px 0; font-weight: bold;"></p>
-        <button onclick="answer(true)" style="background: white; color: #5865f2; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">KABUL ET</button>
-        <button onclick="answer(false)" style="background: transparent; color: white; border:1px solid white; padding:8px 15px; border-radius:5px; cursor:pointer; margin-left:10px;">REDDET</button>
+        <h3 id="req-info" style="color:white; margin:0;"></h3>
+        <div class="modal-btns">
+            <button onclick="handleReq(true)" style="background:#3ba55e; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Kabul Et</button>
+            <button onclick="handleReq(false)" style="background:#f04747; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Reddet</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const myName = prompt("Kullanıcı Adınız Nedir?") || "Anonim";
-        document.getElementById('my-name').innerText = myName;
-        
-        // Sunucuya ismimizi kaydet
-        socket.emit('register', myName);
+        let myUser = "";
+        let pendingUser = "";
 
-        // Mesajlaşma Sistemi
-        function handleChat(e) {
+        // 1. GİRİŞ MEKANİZMASI
+        function login() {
+            myUser = prompt("Challenger'a hoş geldin! Kullanıcı adın ne olsun?") || "Anonim" + Math.floor(Math.random() * 1000);
+            socket.emit('register', myUser);
+        }
+        login();
+
+        // 2. MESAJLAŞMA
+        function checkEnter(e) {
             if(e.key === 'Enter') {
-                const input = document.getElementById('chat-in');
-                if(input.value.trim() !== "") {
-                    socket.emit('chat message', { user: myName, text: input.value });
-                    input.value = "";
+                const inp = document.getElementById('msg-input');
+                if(inp.value.trim() !== "") {
+                    socket.emit('chat message', { user: myUser, text: inp.value });
+                    inp.value = "";
                 }
             }
         }
 
         socket.on('chat message', (data) => {
             const li = document.createElement('li');
-            li.className = 'msg';
-            li.innerHTML = `<strong>${data.user}:</strong> ${data.text}`;
+            li.className = 'message-item';
+            li.innerHTML = `<span class="user-tag">${data.user}:</span> <span>${data.text}</span>`;
             document.getElementById('messages').appendChild(li);
             document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         });
 
-        // ARKADAŞLIK SİSTEMİ
-        let pendingUser = "";
-
-        function sendRequest() {
-            const target = document.getElementById('target-user').value.trim();
-            if(target && target !== myName) {
-                socket.emit('send friend request', { from: myName, to: target });
-                alert(target + " kullanıcısına istek gönderildi!");
-                document.getElementById('target-user').value = "";
+        // 3. ARKADAŞLIK İSTEĞİ GÖNDERME
+        function sendReq() {
+            const target = document.getElementById('target-name').value.trim();
+            if(target && target !== myUser) {
+                socket.emit('send friend request', { from: myUser, to: target });
+                alert(target + " kullanıcısına istek iletildi!");
+                document.getElementById('target-name').value = "";
             }
         }
 
+        // 4. İSTEK ALMA (Onay Kutusu Çıkar)
         socket.on('receive friend request', (data) => {
             pendingUser = data.from;
-            document.getElementById('request-msg').innerText = data.from + " seni eklemek istiyor!";
+            document.getElementById('req-info').innerText = data.from + " seni eklemek istiyor!";
             document.getElementById('request-modal').style.display = 'block';
         });
 
-        function answer(status) {
-            socket.emit('respond friend request', { from: pendingUser, to: myName, accepted: status });
+        function handleReq(ans) {
+            socket.emit('respond friend request', { from: pendingUser, to: myUser, accepted: ans });
             document.getElementById('request-modal').style.display = 'none';
         }
 
+        // 5. YANIT ALMA (Listeye Ekleme)
         socket.on('request response', (data) => {
             if(data.accepted) {
-                alert(data.from + " isteğini kabul etti! 🎉");
                 const li = document.createElement('li');
                 li.innerText = "👤 " + data.from;
                 document.getElementById('friends-list').appendChild(li);
+                alert(data.from + " ile artık arkadaşsınız!");
             } else {
-                alert(data.from + " isteğini reddetti. ❌");
+                alert(data.from + " isteğini maalesef reddetti.");
             }
         });
+
+        // 6. ÇIKIŞ YAPMA
+        function logout() {
+            if(confirm("Çıkış yapmak istediğine emin misin?")) {
+                window.location.reload(); // Sayfayı yenilemek bağlantıyı koparır ve çıkış sayılır
+            }
+        }
     </script>
 </body>
 </html>
