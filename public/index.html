@@ -2,75 +2,69 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenger Chat - v1.0</title>
+    <title>Challenger Pro - Discord Edition</title>
     <style>
         * { box-sizing: border-box; }
-        body { background: #36393f; color: #dcddde; font-family: 'Whitney', 'Helvetica Neue', sans-serif; margin: 0; display: flex; height: 100vh; }
+        body { background: #36393f; color: #dcddde; font-family: sans-serif; margin:0; display:flex; height:100vh; }
         
-        /* Sol Menü */
-        #sidebar { width: 260px; background: #2f3136; display: flex; flex-direction: column; border-right: 1px solid #202225; }
-        .sidebar-header { padding: 20px; font-weight: bold; color: white; border-bottom: 1px solid #26272b; display: flex; justify-content: space-between; }
-        .logout-btn { cursor: pointer; color: #f04747; font-size: 12px; }
-
-        /* Arkadaş Listesi Alanı */
-        .friends-container { padding: 20px; flex: 1; }
-        .friends-title { font-size: 12px; font-weight: bold; color: #8e9297; margin-bottom: 10px; text-transform: uppercase; }
-        #friends-list { list-style: none; padding: 0; margin: 0; }
-        #friends-list li { padding: 8px; border-radius: 4px; margin-bottom: 2px; background: transparent; transition: 0.2s; }
-        #friends-list li:hover { background: #393c43; }
-
-        /* Arkadaş Ekleme Alt Bar */
-        .add-friend-bar { padding: 15px; background: #292b2f; }
-        .add-input { width: 100%; background: #202225; border: none; color: white; padding: 8px; border-radius: 4px; margin-bottom: 5px; }
-        .add-btn { width: 100%; background: #3ba55e; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-
-        /* Mesajlaşma Alanı */
-        #chat-main { flex: 1; display: flex; flex-direction: column; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; list-style: none; margin: 0; }
-        .message-item { margin-bottom: 15px; border-bottom: 1px solid #40444b; padding-bottom: 8px; }
-        .user-tag { color: #fff; font-weight: bold; margin-right: 8px; }
+        /* Giriş Ekranı */
+        #auth-screen { position:fixed; inset:0; background:#2f3136; z-index:999; display:flex; align-items:center; justify-content:center; }
+        .auth-box { background:#36393f; padding:30px; border-radius:8px; width:350px; text-align:center; }
         
-        .input-box { padding: 20px; background: #36393f; }
-        #msg-input { width: 100%; background: #40444b; border: none; color: #dcddde; padding: 15px; border-radius: 8px; outline: none; }
+        /* Ana Panel */
+        #app { display:none; flex:1; width:100%; }
+        #guilds { width:70px; background:#202225; padding:12px 0; display:flex; flex-direction:column; align-items:center; }
+        #channels { width:240px; background:#2f3136; display:flex; flex-direction:column; }
+        #chat { flex:1; display:flex; flex-direction:column; }
+        
+        .channel-btn { padding:10px; margin:2px 10px; border-radius:4px; cursor:pointer; color:#8e9297; }
+        .channel-btn:hover { background:#393c43; color:white; }
+        .channel-btn.active { background:#42464d; color:white; }
 
-        /* Onay Kutusu (Modal) */
-        #request-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2f3136; border: 2px solid #7289da; padding: 25px; border-radius: 8px; z-index: 1000; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        #msg-list { flex:1; overflow-y:auto; padding:20px; list-style:none; }
+        .msg-box { padding:15px; background:#36393f; }
+        input { width:100%; background:#40444b; border:none; color:white; padding:12px; border-radius:8px; outline:none; }
+        button.primary { background:#5865f2; color:white; border:none; padding:10px; width:100%; border-radius:4px; cursor:pointer; margin-top:10px; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <span>CHALLENGER</span>
-            <span class="logout-btn" onclick="logout()">Çıkış Yap</span>
-        </div>
-        
-        <div class="friends-container">
-            <div class="friends-title">Arkadaşlarım</div>
-            <ul id="friends-list">
-                </ul>
-        </div>
-
-        <div class="add-friend-bar">
-            <input type="text" id="target-name" class="add-input" placeholder="Kullanıcı adı...">
-            <button class="add-btn" onclick="sendReq()">Arkadaş Ekle</button>
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 style="color:white">Hoş Geldin!</h2>
+            <input type="text" id="user-in" placeholder="Kullanıcı Adı" style="margin-bottom:10px">
+            <input type="password" id="pass-in" placeholder="Şifre">
+            <button class="primary" onclick="auth('login')">Giriş Yap</button>
+            <button class="primary" onclick="auth('register')" style="background:#4e5058">Kayıt Ol</button>
         </div>
     </div>
 
-    <div id="chat-main">
-        <ul id="messages"></ul>
-        <div class="input-box">
-            <input type="text" id="msg-input" placeholder="Mesaj gönder..." onkeypress="checkEnter(event)">
+    <div id="app">
+        <div id="guilds">
+            <div style="width:48px; height:48px; background:#5865f2; border-radius:15px; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; cursor:pointer">C</div>
         </div>
-    </div>
 
-    <div id="request-modal">
-        <h3 id="req-info" style="color:white; margin:0;"></h3>
-        <div class="modal-btns">
-            <button onclick="handleReq(true)" style="background:#3ba55e; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Kabul Et</button>
-            <button onclick="handleReq(false)" style="background:#f04747; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Reddet</button>
+        <div id="channels">
+            <div style="padding:15px; color:white; font-weight:bold; border-bottom:1px solid #26272b">CHALLENGER SERVER</div>
+            <div style="padding:10px; color:#8e9297; font-size:12px; margin-top:10px">METİN KANALLARI</div>
+            <div class="channel-btn active" onclick="joinRoom('genel', this)"># genel</div>
+            <div class="channel-btn" onclick="joinRoom('oyun', this)"># oyun</div>
+            <div class="channel-btn" onclick="joinRoom('yardım', this)"># yardım</div>
+            
+            <div style="margin-top:auto; background:#292b2f; padding:10px; display:flex; align-items:center">
+                <div style="width:32px; height:32px; background:#4f545c; border-radius:50%; margin-right:10px"></div>
+                <div>
+                    <div id="my-name" style="color:white; font-size:14px; font-weight:bold">...</div>
+                    <div id="my-role" style="color:#b9bbbe; font-size:12px">Üye</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chat">
+            <ul id="msg-list"></ul>
+            <div class="msg-box">
+                <input type="text" id="main-input" placeholder="Mesaj gönder..." onkeypress="sendMsg(event)">
+            </div>
         </div>
     </div>
 
@@ -78,74 +72,51 @@
     <script>
         const socket = io();
         let myUser = "";
-        let pendingUser = "";
+        let currentRoom = "genel";
 
-        // 1. GİRİŞ MEKANİZMASI
-        function login() {
-            myUser = prompt("Challenger'a hoş geldin! Kullanıcı adın ne olsun?") || "Anonim" + Math.floor(Math.random() * 1000);
-            socket.emit('register', myUser);
+        function auth(type) {
+            const username = document.getElementById('user-in').value;
+            const password = document.getElementById('pass-in').value;
+            socket.emit('auth', { type, username, password });
         }
-        login();
 
-        // 2. MESAJLAŞMA
-        function checkEnter(e) {
+        socket.on('auth_success', (data) => {
+            myUser = data.username;
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app').style.display = 'flex';
+            document.getElementById('my-name').innerText = myUser;
+            document.getElementById('my-role').innerText = data.role;
+            socket.emit('login_complete', myUser);
+            joinRoom('genel');
+        });
+
+        socket.on('auth_error', (msg) => alert(msg));
+
+        function joinRoom(room, el) {
+            currentRoom = room;
+            socket.emit('join_room', room);
+            if(el) {
+                document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
+                el.classList.add('active');
+            }
+            document.getElementById('msg-list').innerHTML = `<li style="color:#8e9297"># ${room} kanalına hoş geldin!</li>`;
+        }
+
+        function sendMsg(e) {
             if(e.key === 'Enter') {
-                const inp = document.getElementById('msg-input');
-                if(inp.value.trim() !== "") {
-                    socket.emit('chat message', { user: myUser, text: inp.value });
-                    inp.value = "";
-                }
+                const text = e.target.value;
+                socket.emit('chat_message', { user: myUser, text, room: currentRoom });
+                e.target.value = "";
             }
         }
 
-        socket.on('chat message', (data) => {
+        socket.on('chat_message', (data) => {
             const li = document.createElement('li');
-            li.className = 'message-item';
-            li.innerHTML = `<span class="user-tag">${data.user}:</span> <span>${data.text}</span>`;
-            document.getElementById('messages').appendChild(li);
-            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            li.style.marginBottom = "15px";
+            li.innerHTML = `<strong style="color:white">${data.user}</strong> <span style="color:#72767d; font-size:12px">${new Date().toLocaleTimeString()}</span><br>${data.text}`;
+            document.getElementById('msg-list').appendChild(li);
+            document.getElementById('msg-list').scrollTop = document.getElementById('msg-list').scrollHeight;
         });
-
-        // 3. ARKADAŞLIK İSTEĞİ GÖNDERME
-        function sendReq() {
-            const target = document.getElementById('target-name').value.trim();
-            if(target && target !== myUser) {
-                socket.emit('send friend request', { from: myUser, to: target });
-                alert(target + " kullanıcısına istek iletildi!");
-                document.getElementById('target-name').value = "";
-            }
-        }
-
-        // 4. İSTEK ALMA (Onay Kutusu Çıkar)
-        socket.on('receive friend request', (data) => {
-            pendingUser = data.from;
-            document.getElementById('req-info').innerText = data.from + " seni eklemek istiyor!";
-            document.getElementById('request-modal').style.display = 'block';
-        });
-
-        function handleReq(ans) {
-            socket.emit('respond friend request', { from: pendingUser, to: myUser, accepted: ans });
-            document.getElementById('request-modal').style.display = 'none';
-        }
-
-        // 5. YANIT ALMA (Listeye Ekleme)
-        socket.on('request response', (data) => {
-            if(data.accepted) {
-                const li = document.createElement('li');
-                li.innerText = "👤 " + data.from;
-                document.getElementById('friends-list').appendChild(li);
-                alert(data.from + " ile artık arkadaşsınız!");
-            } else {
-                alert(data.from + " isteğini maalesef reddetti.");
-            }
-        });
-
-        // 6. ÇIKIŞ YAPMA
-        function logout() {
-            if(confirm("Çıkış yapmak istediğine emin misin?")) {
-                window.location.reload(); // Sayfayı yenilemek bağlantıyı koparır ve çıkış sayılır
-            }
-        }
     </script>
 </body>
 </html>
