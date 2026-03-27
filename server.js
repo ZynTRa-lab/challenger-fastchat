@@ -9,17 +9,23 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// RENDER ÜZERİNDEKİ MONGO_URI'YI KONTROL ET
 const mongoURI = process.env.MONGO_URI;
 
+if (!mongoURI) {
+    console.error("❌ HATA: MONGO_URI tanımlanmamış! Render Dashboard -> Settings -> Config Vars kısmına ekle.");
+}
+
 mongoose.connect(mongoURI)
-    .then(() => console.log("✅ MongoDB Bağlantısı Aktif!"))
-    .catch(err => console.error("❌ MongoDB Hatası:", err.message));
+    .then(() => console.log("✅ MongoDB Bağlantısı Başarılı!"))
+    .catch(err => console.error("❌ MongoDB Bağlantı Hatası:", err.message));
 
 // --- MODELLER ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     bio: { type: String, default: "Selam! Ben bir Challenger kullanıcısıyım." },
+    avatar: { type: String, default: "" }, // Profil Fotoğrafı (Base64 veya URL)
     friends: [String],
     blocked: [String],
     pendingRequests: [String],
@@ -47,6 +53,8 @@ io.on('connection', (socket) => {
         const { type, username, password } = data;
         try {
             if (type === 'register') {
+                const existing = await User.findOne({ username });
+                if (existing) return socket.emit('auth_error', "Bu kullanıcı adı zaten alınmış!");
                 const user = new User({ username, password: await bcrypt.hash(password, 10) });
                 await user.save();
                 socket.emit('auth_success', { username });
@@ -58,7 +66,7 @@ io.on('connection', (socket) => {
                     socket.emit('auth_error', "Giriş bilgileri hatalı!");
                 }
             }
-        } catch (e) { socket.emit('auth_error', "Sistem Hatası!"); }
+        } catch (e) { socket.emit('auth_error', "Veritabanı bağlantı hatası!"); }
     });
 
     socket.on('login_complete', async (username) => {
@@ -68,34 +76,34 @@ io.on('connection', (socket) => {
     });
 
     async function updateUserData(targetSocket) {
-        const user = await User.findOne({ username: targetSocket.username });
-        if(!user) return;
-        const onlineFriends = (user.friends || []).filter(f => onlineUsers[f]);
-        const userGuilds = await Guild.find({ name: { $in: user.guilds } });
-                
-        targetSocket.emit('user_update', {
-            onlineFriends,
-            pendingRequests: user.pendingRequests,
-            guilds: userGuilds,
-            blocked: user.blocked,
-            bio: user.bio
-        });
+        try {
+            const user = await User.findOne({ username: targetSocket.username });
+            if(!user) return;
+            const onlineFriends = (user.friends || []).filter(f => onlineUsers[f]);
+            const userGuilds = await Guild.find({ name: { $in: user.guilds } });
+            
+            targetSocket.emit('user_update', {
+                onlineFriends,
+                pendingRequests: user.pendingRequests,
+                guilds: userGuilds,
+                blocked: user.blocked,
+                bio: user.bio,
+                avatar: user.avatar
+            });
+        } catch (e) { console.log("Update Error"); }
     }
 
-    // Profil Bilgisi Çekme
     socket.on('get_profile', async (targetName) => {
         const user = await User.findOne({ username: targetName });
-        if(user) socket.emit('profile_data', { username: user.username, bio: user.bio });
+        if(user) socket.emit('profile_data', { username: user.username, bio: user.bio, avatar: user.avatar });
     });
 
-    // Profil Güncelleme (Bio)
     socket.on('update_profile', async (data) => {
-        await User.findOneAndUpdate({ username: socket.username }, { bio: data.bio });
+        await User.findOneAndUpdate({ username: socket.username }, { bio: data.bio, avatar: data.avatar });
         await updateUserData(socket);
-        socket.emit('sys_msg', "Profil güncellendi!");
+        socket.emit('sys_msg', "Profil başarıyla güncellendi!");
     });
 
-    // Arkadaşlıktan Çıkarma veya Engelleme
     socket.on('relation_action', async ({ target, type }) => {
         const me = await User.findOne({ username: socket.username });
         const other = await User.findOne({ username: target });
@@ -114,7 +122,6 @@ io.on('connection', (socket) => {
         if(onlineUsers[target]) await updateUserData(io.sockets.sockets.get(onlineUsers[target]));
     });
 
-    // İstek Yönetimi
     socket.on('send_friend_request', async (targetName) => {
         const target = await User.findOne({ username: targetName });
         const me = await User.findOne({ username: socket.username });
@@ -135,4 +142,32 @@ io.on('connection', (socket) => {
             await sender.save();
         }
         await me.save();
-        await updateUserData
+        await updateUserData(socket);
+        if(onlineUsers[fromUser]) await updateUserData(io.sockets.sockets.get(onlineUsers[fromUser]));
+    });
+
+    socket.on('create_guild', async (name) => {
+        const g = new Guild({ name, owner: socket.username, members: [socket.username] });
+        await g.save();
+        const me = await User.findOne({ username: socket.username });
+        me.guilds.push(name); await me.save();
+        await updateUserData(socket);
+    });
+
+    socket.on('join_room', async (room) => {
+        socket.leaveAll(); socket.join(room);
+        const history = await Message.find({ room }).sort({ timestamp: 1 }).limit(50);
+        socket.emit('load_history', history);
+    });
+
+    socket.on('chat_message', async (data) => {
+        const m = new Message({ room: data.room, user: data.user, text: data.text });
+        await m.save();
+        io.to(data.room).emit('chat_message', m);
+    });
+
+    socket.on('disconnect', () => { delete onlineUsers[socket.username]; });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda hazır!`));
