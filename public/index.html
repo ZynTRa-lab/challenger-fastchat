@@ -4,23 +4,18 @@
     <meta charset="UTF-8">
     <title>Challenger Pro</title>
     <style>
-        :root { --primary: #5865f2; --bg: #36393f; --sidebar: #2f3136; --dark: #202225; --text: #dcddde; }
+        :root { --primary: #5865f2; --bg: #36393f; --sidebar: #2f3136; --dark: #202225; --text: #dcddde; --danger: #ed4245; }
         * { box-sizing: border-box; transition: 0.2s; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--bg); color: var(--text); margin:0; display:flex; height:100vh; overflow:hidden; }
         
-        /* Auth */
         #auth-screen { position:fixed; inset:0; background:var(--sidebar); z-index:2000; display:flex; align-items:center; justify-content:center; }
         .auth-box { background:var(--bg); padding:40px; border-radius:8px; width:400px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
         #app { display:none; flex:1; width:100%; }
         
-        /* Modals (Özel Arayüz Pencereleri) */
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1500; display:none; align-items:center; justify-content:center; }
         .modal { background:var(--bg); padding:24px; border-radius:8px; width:440px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .modal h3 { margin-top:0; color:white; }
-        .modal-btns { display:flex; gap:10px; margin-top:20px; }
 
-        /* Navigation */
         #guilds { width:72px; background:var(--dark); padding:12px 0; display:flex; flex-direction:column; align-items:center; gap:10px; border-right: 1px solid #1e1f22; }
         .guild-icon { width:48px; height:48px; background:var(--bg); border-radius:50%; color:var(--text); display:flex; align-items:center; justify-content:center; font-weight:bold; cursor:pointer; }
         .guild-icon:hover, .guild-icon.active { border-radius:15px; background:var(--primary); color:white; }
@@ -30,19 +25,18 @@
         
         .list-item { padding:10px; margin:2px 8px; border-radius:4px; cursor:pointer; color:#8e9297; display:flex; align-items:center; gap:10px; font-size:14px; }
         .list-item:hover { background:#393c43; color:white; }
-        .list-item.active { background:#4f545c; color:white; }
 
         #chat { flex:1; display:flex; flex-direction:column; background:var(--bg); }
         #msg-list { flex:1; overflow-y:auto; padding:20px; list-style:none; margin:0; }
         .msg-box { padding:20px; }
 
-        input { width:100%; background:#40444b; border:none; color:white; padding:12px; border-radius:8px; outline:none; }
-        button { flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; }
+        input, textarea { width:100%; background:#40444b; border:none; color:white; padding:12px; border-radius:8px; outline:none; margin-top:5px; }
+        button { padding:10px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:10px; }
+        button.danger { background: var(--danger); }
         button.sec { background: #4e5058; }
 
-        .request-item { background: #2f3136; padding:10px; border-radius:4px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+        .user-footer { background:#232428; padding:10px; display:flex; align-items:center; gap:10px; margin-top:auto; cursor:pointer; }
         .status-dot { width:10px; height:10px; background:#3ba55d; border-radius:50%; }
-        .user-footer { background:#232428; padding:10px; display:flex; align-items:center; gap:10px; margin-top:auto; }
     </style>
 </head>
 <body>
@@ -52,34 +46,43 @@
             <h2 style="color:white">Challenger</h2>
             <input type="text" id="user-in" placeholder="Kullanıcı Adı">
             <input type="password" id="pass-in" placeholder="Şifre" style="margin-top:10px">
-            <button style="margin-top:20px" onclick="auth('login')">Giriş Yap</button>
-            <button class="sec" style="margin-top:10px" onclick="auth('register')">Kayıt Ol</button>
-            <p id="error-msg" style="color:#f04747; font-size:12px; margin-top:10px"></p>
+            <div style="margin-top:15px; color:#b9bbbe; font-size:13px; text-align:left">
+                <input type="checkbox" id="rem-check" style="width:auto"> Beni Hatırla
+            </div>
+            <button style="width:100%; margin-top:15px" onclick="auth('login')">Giriş Yap</button>
+            <button class="sec" style="width:100%; margin-top:10px" onclick="auth('register')">Kayıt Ol</button>
+            <p id="auth-err" style="color:var(--danger); font-size:12px"></p>
         </div>
     </div>
 
-    <div class="modal-overlay" id="guild-modal">
+    <div class="modal-overlay" id="my-profile-modal">
         <div class="modal">
-            <h3>Bir Sunucuya Katıl veya Kur</h3>
-            <input type="text" id="guild-name-in" placeholder="Sunucu Adı Girin...">
-            <div class="modal-btns">
-                <button onclick="handleGuildAction('create')">Kur</button>
-                <button onclick="handleGuildAction('join')">Katıl</button>
-                <button class="sec" onclick="closeModals()">İptal</button>
+            <h3>Hesap Ayarları</h3>
+            <label style="font-size:12px">Biyografi</label>
+            <textarea id="my-bio-in" rows="3"></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px">
+                <button onclick="saveProfile()">Kaydet</button>
+                <button class="danger" onclick="logout()">Çıkış Yap</button>
+                <button class="sec" onclick="closeModals()">Kapat</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="friend-modal">
+    <div class="modal-overlay" id="user-profile-modal">
         <div class="modal">
-            <h3>Arkadaşlık İşlemleri</h3>
-            <input type="text" id="friend-name-in" placeholder="Kullanıcı Adı Yazın...">
-            <button style="margin-top:10px" onclick="sendReq()">İstek Gönder</button>
-            <div id="pending-list" style="margin-top:20px; border-top:1px solid #40444b; padding-top:15px">
-                </div>
-            <button class="sec" style="margin-top:15px" onclick="closeModals()">Kapat</button>
+            <h2 id="view-name">...</h2>
+            <p id="view-bio">...</p>
+            <div style="display:flex; gap:10px; margin-top:15px">
+                <button id="dm-btn">Mesaj</button>
+                <button class="danger" id="unfriend-btn">Arkadaştan Çıkar</button>
+                <button class="danger" style="background:black" id="block-btn">Engelle</button>
+            </div>
+            <button class="sec" style="width:100%; margin-top:10px" onclick="closeModals()">Kapat</button>
         </div>
     </div>
+
+    <div class="modal-overlay" id="guild-modal"><div class="modal"><h3>Sunucu</h3><input type="text" id="g-in"><button onclick="socket.emit('create_guild',document.getElementById('g-in').value);closeModals()">Kur/Katıl</button></div></div>
+    <div class="modal-overlay" id="friend-modal"><div class="modal"><h3>Arkadaş Ekle</h3><input type="text" id="f-in"><button onclick="socket.emit('send_friend_request',document.getElementById('f-in').value);closeModals()">İstek Gönder</button><div id="pending-list" style="margin-top:15px"></div></div></div>
 
     <div id="app">
         <div id="guilds">
@@ -87,22 +90,21 @@
             <div id="guild-list"></div>
             <div class="guild-icon" style="background:#3ba55d; color:white" onclick="openModal('guild-modal')">+</div>
         </div>
-
         <div id="channels">
             <div class="side-header" id="panel-title">Arkadaşlar</div>
-            <div id="side-list" style="padding-top:10px"></div>
-            <div class="user-footer">
+            <div id="side-list" style="padding-top:10px; flex:1"></div>
+            <div class="user-footer" onclick="openMyProfile()">
                 <div style="width:32px; height:32px; background:var(--primary); border-radius:50%"></div>
-                <div id="my-name" style="color:white; font-size:14px; font-weight:bold">...</div>
+                <div style="flex:1">
+                    <div id="my-name" style="color:white; font-size:14px; font-weight:bold">...</div>
+                    <div style="color:#b9bbbe; font-size:11px">Profil Ayarları</div>
+                </div>
             </div>
         </div>
-
         <div id="chat">
             <div class="side-header" id="chat-title">Hoş Geldin</div>
             <ul id="msg-list"></ul>
-            <div class="msg-box">
-                <input type="text" id="main-input" placeholder="Mesaj gönder..." onkeypress="sendMsg(event)">
-            </div>
+            <div class="msg-box"><input type="text" id="main-input" placeholder="Mesaj gönder..." onkeypress="sendMsg(event)"></div>
         </div>
     </div>
 
@@ -113,46 +115,68 @@
         let currentRoom = "";
         let isHome = true;
 
+        // --- BENİ HATIRLA KONTROLÜ ---
+        window.onload = () => {
+            const savedUser = localStorage.getItem('challenger_user');
+            if(savedUser) {
+                myUser = savedUser;
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                document.getElementById('my-name').innerText = myUser;
+                socket.emit('login_complete', myUser);
+                showHome();
+            }
+        };
+
         function auth(type) {
-            const username = document.getElementById('user-in').value;
-            const password = document.getElementById('pass-in').value;
-            socket.emit('auth', { type, username, password });
+            const u = document.getElementById('user-in').value;
+            const p = document.getElementById('pass-in').value;
+            const rem = document.getElementById('rem-check').checked;
+            socket.emit('auth', { type, username: u, password: p });
+            socket.once('auth_success', (data) => {
+                myUser = data.username;
+                if(rem) localStorage.setItem('challenger_user', myUser);
+                location.reload(); // Temiz bir başlangıç için
+            });
         }
 
-        socket.on('auth_success', (data) => {
-            myUser = data.username;
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').style.display = 'flex';
-            document.getElementById('my-name').innerText = myUser;
-            socket.emit('login_complete', myUser);
-            showHome();
-        });
+        function logout() {
+            localStorage.removeItem('challenger_user');
+            location.reload();
+        }
 
-        // Modal Fonksiyonları
+        // Modallar
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
 
-        function handleGuildAction(type) {
-            const name = document.getElementById('guild-name-in').value;
-            if(!name) return;
-            if(type === 'create') socket.emit('create_guild', name);
-            else socket.emit('join_guild_request', name);
-            closeModals(); document.getElementById('guild-name-in').value = "";
+        function openMyProfile() {
+            openModal('my-profile-modal');
+            socket.emit('get_profile', myUser);
         }
 
-        function sendReq() {
-            const name = document.getElementById('friend-name-in').value;
-            if(name) socket.emit('send_friend_request', name);
-            document.getElementById('friend-name-in').value = "";
+        socket.on('profile_data', (data) => {
+            if(data.username === myUser) document.getElementById('my-bio-in').value = data.bio;
+            else {
+                document.getElementById('view-name').innerText = data.username;
+                document.getElementById('view-bio').innerText = data.bio;
+                // Butonları ayarla
+                document.getElementById('dm-btn').onclick = () => { startDM(data.username); closeModals(); };
+                document.getElementById('unfriend-btn').onclick = () => { socket.emit('relation_action', {target: data.username, type:'remove'}); closeModals(); };
+                document.getElementById('block-btn').onclick = () => { socket.emit('relation_action', {target: data.username, type:'block'}); closeModals(); };
+                openModal('user-profile-modal');
+            }
+        });
+
+        function saveProfile() {
+            socket.emit('update_profile', { bio: document.getElementById('my-bio-in').value });
+            closeModals();
         }
 
+        // Ana Ekran ve Güncellemeler
         function showHome() {
             isHome = true;
             document.getElementById('panel-title').innerText = "Arkadaşlar";
-            document.getElementById('side-list').innerHTML = `
-                <div class="list-item" onclick="openModal('friend-modal')" style="color:#3ba55d; font-weight:bold">+ Arkadaş İşlemleri</div>
-                <div id="friend-list"></div>
-            `;
+            document.getElementById('side-list').innerHTML = `<div class="list-item" onclick="openModal('friend-modal')" style="color:#3ba55d">+ Arkadaş İşlemleri</div><div id="friend-list"></div>`;
             socket.emit('login_complete', myUser);
         }
 
@@ -165,90 +189,60 @@
                         const div = document.createElement('div');
                         div.className = "list-item";
                         div.innerHTML = `<div class="status-dot"></div> ${f}`;
-                        div.onclick = () => startDM(f);
+                        div.onclick = () => socket.emit('get_profile', f);
                         flist.appendChild(div);
                     });
                 }
             }
-            // Gelen İstekleri Listele
+            // İstekler
             const plist = document.getElementById('pending-list');
-            plist.innerHTML = data.pendingRequests.length ? "<h4>Gelen İstekler</h4>" : "<h4>İstek Yok</h4>";
+            plist.innerHTML = data.pendingRequests.length ? "<h4>İstekler</h4>" : "";
             data.pendingRequests.forEach(req => {
                 const div = document.createElement('div');
-                div.className = "request-item";
-                div.innerHTML = `<span>${req}</span> <div>
-                    <button style="padding:4px 8px" onclick="handleReq('${req}','accept')">✔</button>
-                    <button class="sec" style="padding:4px 8px" onclick="handleReq('${req}','reject')">✖</button>
-                </div>`;
+                div.innerHTML = `${req} <button onclick="socket.emit('handle_request',{fromUser:'${req}',action:'accept'})">✔</button>`;
                 plist.appendChild(div);
             });
-
-            // Sunucuları Listele
+            // Sunucular
             const glist = document.getElementById('guild-list');
             glist.innerHTML = "";
             data.guilds.forEach(g => {
                 const div = document.createElement('div');
-                div.className = "guild-icon";
-                div.innerText = g.name[0].toUpperCase();
+                div.className = "guild-icon"; div.innerText = g.name[0];
                 div.onclick = () => openGuild(g.name);
                 glist.appendChild(div);
             });
         });
 
-        function handleReq(from, action) { socket.emit('handle_request', { fromUser: from, action }); }
-
-        function startDM(target) {
-            const room = [myUser, target].sort().join('_');
-            document.getElementById('chat-title').innerText = `@ ${target}`;
+        function startDM(t) {
+            const room = [myUser, t].sort().join('_');
+            document.getElementById('chat-title').innerText = `@ ${t}`;
             joinRoom(`dm_${room}`);
         }
 
-        function openGuild(name) {
+        function openGuild(n) {
             isHome = false;
-            document.getElementById('panel-title').innerText = name;
+            document.getElementById('panel-title').innerText = n;
             document.getElementById('side-list').innerHTML = `<div class="list-item active"># genel</div>`;
             document.getElementById('chat-title').innerText = `# genel`;
-            joinRoom(`guild_${name}`);
+            joinRoom(`guild_${n}`);
         }
 
-        function joinRoom(room) {
-            currentRoom = room;
-            document.getElementById('msg-list').innerHTML = ""; 
-            socket.emit('join_room', room);
-        }
+        function joinRoom(r) { currentRoom = r; document.getElementById('msg-list').innerHTML = ""; socket.emit('join_room', r); }
+        function sendMsg(e) { if(e.key === 'Enter' && e.target.value.trim()){ socket.emit('chat_message', {user:myUser, text:e.target.value, room:currentRoom}); e.target.value=""; } }
+        socket.on('load_history', (m) => m.forEach(appendMsg));
+        socket.on('chat_message', appendMsg);
 
-        socket.on('load_history', (messages) => {
-            messages.forEach(msg => appendMsg(msg));
-        });
-
-        function sendMsg(e) {
-            if(e.key === 'Enter' && e.target.value.trim() !== "") {
-                socket.emit('chat_message', { user: myUser, text: e.target.value, room: currentRoom });
-                e.target.value = "";
-            }
-        }
-
-        socket.on('chat_message', (data) => appendMsg(data));
-
-        function appendMsg(data) {
+        function appendMsg(d) {
             const list = document.getElementById('msg-list');
             const li = document.createElement('li');
-            li.style.display = "flex"; li.style.marginBottom = "20px";
-            const time = new Date(data.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            li.innerHTML = `
-                <div style="width:40px; height:40px; background:#4f545c; border-radius:50%; margin-right:15px;"></div>
-                <div>
-                    <strong style="color:white; margin-right:8px">${data.user}</strong>
-                    <span style="color:#72767d; font-size:12px">${time}</span>
-                    <div style="color:#dcddde; margin-top:4px">${data.text}</div>
-                </div>
-            `;
-            list.appendChild(li);
-            list.scrollTop = list.scrollHeight;
+            li.style.display="flex"; li.style.marginBottom="15px";
+            li.innerHTML = `<div style="width:36px; height:36px; background:#4f545c; border-radius:50%; margin-right:12px"></div>
+                <div><strong style="color:white">${d.user}</strong> <div style="color:var(--text)">${d.text}</div></div>`;
+            list.appendChild(li); list.scrollTop = list.scrollHeight;
         }
 
-        socket.on('sys_msg', (msg) => alert(msg));
-        socket.on('auth_error', (msg) => document.getElementById('error-msg').innerText = msg);
+        socket.on('sys_msg', (m) => alert(m));
+        socket.on('auth_error', (m) => document.getElementById('auth-err').innerText = m);
     </script>
 </body>
 </html>
