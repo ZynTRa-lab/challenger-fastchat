@@ -19,19 +19,20 @@ mongoose.connect(mongoURI)
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true },
     password: { type: String, required: true },
-    role: { type: String, default: "Üye" }
+    friends: [String], // Arkadaş listesi (Kullanıcı adları)
+    guilds: [String]   // Katıldığı sunucuların ID'leri veya isimleri
 });
 const User = mongoose.model('User', UserSchema);
 
-const ServerSchema = new mongoose.Schema({
-    name: String,
+const GuildSchema = new mongoose.Schema({
+    name: { type: String, unique: true },
     owner: String,
-    icon: String
+    members: [String]
 });
-const Guild = mongoose.model('Guild', ServerSchema);
+const Guild = mongoose.model('Guild', GuildSchema);
 
 const MessageSchema = new mongoose.Schema({
-    room: String, // Sunucu odası veya DM odası (örn: dm_ege_ali)
+    room: String,
     user: String,
     text: String,
     timestamp: { type: Date, default: Date.now }
@@ -49,15 +50,15 @@ io.on('connection', (socket) => {
         try {
             if (type === 'register') {
                 const existing = await User.findOne({ username });
-                if (existing) return socket.emit('auth_error', "Kullanıcı adı dolu!");
+                if (existing) return socket.emit('auth_error', "Bu kullanıcı adı dolu!");
                 const hashedPassword = await bcrypt.hash(password, 10);
                 const newUser = new User({ username, password: hashedPassword });
                 await newUser.save();
-                socket.emit('auth_success', { username, role: "Üye" });
+                socket.emit('auth_success', { username });
             } else {
                 const user = await User.findOne({ username });
                 if (user && await bcrypt.compare(password, user.password)) {
-                    socket.emit('auth_success', { username: user.username, role: user.role });
+                    socket.emit('auth_success', { username });
                 } else {
                     socket.emit('auth_error', "Giriş hatalı!");
                 }
@@ -68,20 +69,88 @@ io.on('connection', (socket) => {
     socket.on('login_complete', async (username) => {
         socket.username = username;
         onlineUsers[username] = socket.id;
-        
-        // Sunucuları yükle
-        const guilds = await Guild.find();
-        socket.emit('load_guilds', guilds);
-        
-        // Herkese güncel kullanıcı listesini at
-        io.emit('user_update', Object.keys(onlineUsers));
+        await updateUserData(socket);
     });
 
-    socket.on('create_server', async (data) => {
-        const newGuild = new Guild({ name: data.name, owner: data.owner, icon: data.name[0].toUpperCase() });
-        await newGuild.save();
-        const allGuilds = await Guild.find();
-        io.emit('load_guilds', allGuilds);
+    async function updateUserData(targetSocket) {
+        const user = await User.findOne({ username: targetSocket.username });
+        if(!user) return;
+
+        // Sadece arkadaş olanları ve online olanları filtrele
+        const friendList = user.friends || [];
+        const onlineFriends = friendList.filter(f => onlineUsers[f]);
+        
+        // Kullanıcıya kendi arkadaş listesini ve sunucularını gönder
+        const userGuilds = await Guild.find({ name: { $in: user.guilds } });
+        
+        targetSocket.emit('user_update', {
+            onlineFriends,
+            guilds: userGuilds
+        });
+        
+        // Arkadaşlarına "ben online oldum" sinyali gönder
+        onlineFriends.forEach(fName => {
+            const fSocketId = onlineUsers[fName];
+            if(fSocketId) {
+                io.to(fSocketId).emit('friend_online', targetSocket.username);
+            }
+        });
+    }
+
+    // Arkadaş Ekleme
+    socket.on('add_friend', async (targetName) => {
+        if(targetName === socket.username) return socket.emit('sys_msg', "Kendini ekleyemezsin kanka!");
+        
+        const target = await User.findOne({ username: targetName });
+        const me = await User.findOne({ username: socket.username });
+
+        if(target && !me.friends.includes(targetName)) {
+            me.friends.push(targetName);
+            target.friends.push(socket.username);
+            await me.save();
+            await target.save();
+            await updateUserData(socket);
+            const targetSocketId = onlineUsers[targetName];
+            if(targetSocketId) {
+                const targetSocket = io.sockets.sockets.get(targetSocketId);
+                if(targetSocket) await updateUserData(targetSocket);
+            }
+        } else {
+            socket.emit('sys_msg', "Kullanıcı bulunamadı veya zaten arkadaşsınız.");
+        }
+    });
+
+    // Sunucu Kurma
+    socket.on('create_guild', async (guildName) => {
+        try {
+            const existing = await Guild.findOne({ name: guildName });
+            if(existing) return socket.emit('sys_msg', "Bu isimde bir sunucu zaten var!");
+
+            const newGuild = new Guild({ name: guildName, owner: socket.username, members: [socket.username] });
+            await newGuild.save();
+
+            const me = await User.findOne({ username: socket.username });
+            me.guilds.push(guildName);
+            await me.save();
+
+            await updateUserData(socket);
+        } catch(e) { console.log(e); }
+    });
+
+    // Sunucuya Katılma
+    socket.on('join_guild_request', async (guildName) => {
+        const guild = await Guild.findOne({ name: guildName });
+        if(!guild) return socket.emit('sys_msg', "Sunucu bulunamadı!");
+
+        const me = await User.findOne({ username: socket.username });
+        if(me.guilds.includes(guildName)) return socket.emit('sys_msg', "Zaten bu sunucudasın!");
+
+        me.guilds.push(guildName);
+        guild.members.push(socket.username);
+        await me.save();
+        await guild.save();
+
+        await updateUserData(socket);
     });
 
     socket.on('join_room', async (room) => {
@@ -104,7 +173,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (socket.username) delete onlineUsers[socket.username];
-        io.emit('user_update', Object.keys(onlineUsers));
+        // Arkadaşlarına çevrimdışı bilgisini yayabiliriz (opsiyonel)
     });
 });
 

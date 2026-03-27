@@ -2,28 +2,27 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Challenger Pro - Community</title>
+    <title>Challenger Pro</title>
     <style>
-        * { box-sizing: border-box; transition: all 0.2s ease; }
+        * { box-sizing: border-box; transition: 0.2s; }
         body { background: #36393f; color: #dcddde; font-family: 'Segoe UI', sans-serif; margin:0; display:flex; height:100vh; overflow:hidden; }
         
-        #auth-screen { position:fixed; inset:0; background:#2f3136; z-index:999; display:flex; align-items:center; justify-content:center; }
-        .auth-box { background:#36393f; padding:40px; border-radius:8px; width:400px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); text-align:center; }
+        #auth-screen { position:fixed; inset:0; background:#2f3136; z-index:1000; display:flex; align-items:center; justify-content:center; }
+        .auth-box { background:#36393f; padding:40px; border-radius:8px; width:400px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
         #app { display:none; flex:1; width:100%; }
         
-        /* Sunucu Listesi (Guilds) */
+        /* Sunucu Listesi */
         #guilds { width:72px; background:#202225; padding:12px 0; display:flex; flex-direction:column; align-items:center; gap:10px; border-right: 1px solid #1e1f22; }
-        .guild-icon { width:48px; height:48px; background:#36393f; border-radius:50%; color:#dcddde; display:flex; align-items:center; justify-content:center; font-weight:bold; cursor:pointer; position:relative; }
-        .guild-icon:hover { border-radius:15px; background:#5865f2; color:white; }
-        .guild-icon.active { border-radius:15px; background:#5865f2; color:white; }
+        .guild-icon { width:48px; height:48px; background:#36393f; border-radius:50%; color:#dcddde; display:flex; align-items:center; justify-content:center; font-weight:bold; cursor:pointer; }
+        .guild-icon:hover, .guild-icon.active { border-radius:15px; background:#5865f2; color:white; }
 
-        /* Kanal Listesi */
+        /* Kanallar */
         #channels { width:240px; background:#2f3136; display:flex; flex-direction:column; }
-        .channel-header { padding:15px; font-weight:bold; color:white; border-bottom:1px solid #232428; display:flex; justify-content:space-between; }
-        .channel-btn { padding:8px 10px; margin:2px 8px; border-radius:4px; cursor:pointer; color:#8e9297; font-weight:500; }
-        .channel-btn:hover { background:#393c43; color:#dcddde; }
-        .channel-btn.active { background:#4f545c; color:white; }
+        .side-header { padding:15px; font-weight:bold; color:white; border-bottom:1px solid #232428; display:flex; justify-content:space-between; align-items:center; }
+        .list-item { padding:10px; margin:2px 8px; border-radius:4px; cursor:pointer; color:#8e9297; font-size:14px; display:flex; align-items:center; gap:8px; }
+        .list-item:hover { background:#393c43; color:#dcddde; }
+        .list-item.active { background:#4f545c; color:white; }
 
         /* Chat */
         #chat { flex:1; display:flex; flex-direction:column; background:#36393f; }
@@ -31,17 +30,13 @@
         .msg-box { padding:20px; }
         input { width:100%; background:#40444b; border:none; color:#dcddde; padding:12px; border-radius:8px; outline:none; }
 
-        /* Kullanıcı Listesi (Sağ Panel) */
-        #user-list-panel { width:240px; background:#2f3136; padding:20px 10px; }
-        .user-item { padding:8px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:10px; color:#8e9297; }
-        .user-item:hover { background:#393c43; color:#dcddde; }
-        .status-dot { width:10px; height:10px; background:#3ba55d; border-radius:50%; }
-
-        /* Footer */
-        .user-footer { background:#232428; padding:8px; display:flex; align-items:center; margin-top:auto; gap:10px; }
+        /* Profil */
+        .user-footer { background:#232428; padding:10px; display:flex; align-items:center; gap:10px; margin-top:auto; }
         .avatar { width:32px; height:32px; background:#5865f2; border-radius:50%; }
 
         button { width:100%; padding:10px; background:#5865f2; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:10px; }
+        
+        .status-dot { width:10px; height:10px; background:#3ba55d; border-radius:50%; }
     </style>
 </head>
 <body>
@@ -53,44 +48,36 @@
             <input type="password" id="pass-in" placeholder="Şifre" style="margin-top:10px">
             <button onclick="auth('login')">Giriş Yap</button>
             <button onclick="auth('register')" style="background:#4e5058">Kayıt Ol</button>
-            <p id="error-msg" style="color:#f04747; font-size:12px; margin-top:10px"></p>
+            <p id="error-msg" style="color:#f04747; font-size:12px"></p>
         </div>
     </div>
 
     <div id="app">
         <div id="guilds">
-            <div class="guild-icon" onclick="joinRoom('Global Chat')" title="Global">G</div>
-            <div id="server-list"></div>
-            <div class="guild-icon" style="background:#3ba55d; color:white" onclick="createServer()" title="Sunucu Ekle">+</div>
+            <div class="guild-icon active" id="home-btn" onclick="showHome()" title="Arkadaşlar">H</div>
+            <div id="guild-list"></div>
+            <div class="guild-icon" style="background:#3ba55d; color:white" onclick="openGuildMenu()" title="Sunucu Seçenekleri">+</div>
         </div>
 
         <div id="channels">
-            <div class="channel-header">
-                <span id="current-server-name">Global Chat</span>
-            </div>
-            <div id="channel-list" style="padding-top:10px">
-                <div class="channel-btn active" onclick="joinRoom('genel', this)"># genel</div>
-            </div>
+            <div class="side-header" id="panel-title">Arkadaşlar</div>
+            <div id="side-list" style="padding-top:10px"></div>
             
             <div class="user-footer">
                 <div class="avatar"></div>
-                <div style="overflow:hidden">
+                <div>
                     <div id="my-name" style="color:white; font-size:14px; font-weight:bold">...</div>
-                    <div id="my-role" style="color:#b9bbbe; font-size:11px">Üye</div>
+                    <div style="color:#b9bbbe; font-size:11px">Çevrimiçi</div>
                 </div>
             </div>
         </div>
 
         <div id="chat">
+            <div class="side-header" id="chat-title">Hoş Geldin</div>
             <ul id="msg-list"></ul>
             <div class="msg-box">
                 <input type="text" id="main-input" placeholder="Mesaj gönder..." onkeypress="sendMsg(event)">
             </div>
-        </div>
-
-        <div id="user-list-panel">
-            <div style="color:#8e9297; font-size:12px; font-weight:bold; margin-bottom:10px; padding-left:8px">ÇEVRİMİÇİ — <span id="user-count">0</span></div>
-            <div id="online-users"></div>
         </div>
     </div>
 
@@ -98,7 +85,8 @@
     <script>
         const socket = io();
         let myUser = "";
-        let currentRoom = "genel";
+        let currentRoom = "";
+        let isHome = true;
 
         function auth(type) {
             const username = document.getElementById('user-in').value;
@@ -111,63 +99,86 @@
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('app').style.display = 'flex';
             document.getElementById('my-name').innerText = myUser;
-            document.getElementById('my-role').innerText = data.role;
             socket.emit('login_complete', myUser);
-            joinRoom('genel');
+            showHome();
         });
 
         socket.on('auth_error', (msg) => {
             document.getElementById('error-msg').innerText = msg;
         });
 
-        function createServer() {
-            const name = prompt("Sunucu İsmi Gir kanka:");
-            if(name) socket.emit('create_server', { name, owner: myUser });
+        // Sunucu Menüsü (2 Seçenek)
+        function openGuildMenu() {
+            const choice = prompt("1: Sunucu KUR\n2: Sunucuya KATIL\n(Sadece numara yaz kanka)");
+            if(choice === "1") {
+                const name = prompt("Kurulacak sunucu adı:");
+                if(name) socket.emit('create_guild', name);
+            } else if(choice === "2") {
+                const name = prompt("Katılmak istediğin sunucu adı:");
+                if(name) socket.emit('join_guild_request', name);
+            }
         }
 
-        socket.on('load_guilds', (guilds) => {
-            const list = document.getElementById('server-list');
-            list.innerHTML = "";
-            guilds.forEach(g => {
+        // Ana Sayfa (Arkadaş Listesi)
+        function showHome() {
+            isHome = true;
+            document.getElementById('panel-title').innerText = "Arkadaşlar";
+            document.getElementById('side-list').innerHTML = `
+                <div class="list-item" onclick="addFriendPrompt()" style="color:#3ba55d; font-weight:bold">+ Arkadaş Ekle</div>
+                <div id="friend-list"></div>
+            `;
+            socket.emit('login_complete', myUser); // Verileri tazele
+        }
+
+        function addFriendPrompt() {
+            const name = prompt("Eklemek istediğin arkadaşının adı:");
+            if(name) socket.emit('add_friend', name);
+        }
+
+        socket.on('user_update', (data) => {
+            if(isHome) {
+                const flist = document.getElementById('friend-list');
+                if(flist) {
+                    flist.innerHTML = "";
+                    data.onlineFriends.forEach(f => {
+                        const div = document.createElement('div');
+                        div.className = "list-item";
+                        div.innerHTML = `<div class="status-dot"></div> ${f}`;
+                        div.onclick = () => startDM(f);
+                        flist.appendChild(div);
+                    });
+                }
+            }
+            // Sunucu listesini güncelle
+            const glist = document.getElementById('guild-list');
+            glist.innerHTML = "";
+            data.guilds.forEach(g => {
                 const div = document.createElement('div');
                 div.className = "guild-icon";
-                div.innerText = g.icon;
-                div.onclick = () => {
-                    document.getElementById('current-server-name').innerText = g.name;
-                    joinRoom(g.name);
-                };
-                list.appendChild(div);
+                div.innerText = g.name[0].toUpperCase();
+                div.onclick = () => openGuild(g.name);
+                glist.appendChild(div);
             });
         });
 
-        socket.on('user_update', (users) => {
-            const list = document.getElementById('online-users');
-            list.innerHTML = "";
-            document.getElementById('user-count').innerText = users.length;
-            users.forEach(u => {
-                if(u === myUser) return;
-                const div = document.createElement('div');
-                div.className = "user-item";
-                div.innerHTML = `<div class="status-dot"></div> ${u}`;
-                div.onclick = () => startDM(u);
-                list.appendChild(div);
-            });
-        });
-
-        function startDM(targetUser) {
-            const dmRoom = [myUser, targetUser].sort().join('_'); // dm_ali_veli
-            document.getElementById('current-server-name').innerText = `@ ${targetUser}`;
-            joinRoom(`dm_${dmRoom}`);
+        function startDM(target) {
+            const room = [myUser, target].sort().join('_');
+            document.getElementById('chat-title').innerText = `@ ${target}`;
+            joinRoom(`dm_${room}`);
         }
 
-        function joinRoom(room, el) {
+        function openGuild(name) {
+            isHome = false;
+            document.getElementById('panel-title').innerText = name;
+            document.getElementById('side-list').innerHTML = `<div class="list-item active"># genel</div>`;
+            document.getElementById('chat-title').innerText = `# genel`;
+            joinRoom(`guild_${name}`);
+        }
+
+        function joinRoom(room) {
             currentRoom = room;
             document.getElementById('msg-list').innerHTML = ""; 
             socket.emit('join_room', room);
-            if(el) {
-                document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
-                el.classList.add('active');
-            }
         }
 
         socket.on('load_history', (messages) => {
@@ -186,8 +197,7 @@
         function appendMsg(data) {
             const list = document.getElementById('msg-list');
             const li = document.createElement('li');
-            li.style.display = "flex";
-            li.style.marginBottom = "20px";
+            li.style.display = "flex"; li.style.marginBottom = "20px";
             const time = new Date(data.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             li.innerHTML = `
                 <div style="width:40px; height:40px; background:#4f545c; border-radius:50%; margin-right:15px;"></div>
@@ -200,6 +210,8 @@
             list.appendChild(li);
             list.scrollTop = list.scrollHeight;
         }
+
+        socket.on('sys_msg', (msg) => alert(msg));
     </script>
 </body>
 </html>
