@@ -1,7 +1,7 @@
 {
-  "name": "challenger-fastchat",
+  "name": "challenger-pro",
   "version": "1.0.0",
-  "description": "Discord Clone Project",
+  "description": "Discord Clone with MongoDB",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
