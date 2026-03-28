@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: #313338;
+    color: #dbdee1;
+    overflow: hidden;
+    height: 100vh;
+  }
+  #root {
+    height: 100vh;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #2b2d31;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e1f22;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #1a1b1e;
+  }
+}
+
+@layer components {
+  .tooltip {
+    @apply absolute z-50 px-3 py-1.5 text-sm font-medium text-white bg-black rounded-md shadow-lg whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply px-4 py-2 bg-discord-brand hover:bg-discord-brand-hover text-white rounded font-medium transition-colors;
+  }
+  .btn-danger {
+    @apply px-4 py-2 bg-discord-red hover:bg-red-600 text-white rounded font-medium transition-colors;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 bg-discord-light hover:bg-discord-hover text-white rounded font-medium transition-colors;
+  }
+  .input-field {
+    @apply w-full px-3 py-2 bg-discord-darker border-none rounded text-discord-text placeholder-discord-text-muted focus:outline-none focus:ring-2 focus:ring-discord-brand;
+  }
+  .channel-item {
+    @apply flex items-center gap-1.5 px-2 py-1.5 mx-2 rounded text-discord-text-muted hover:text-discord-text hover:bg-discord-hover cursor-pointer transition-colors;
+  }
+  .channel-item.active {
+    @apply bg-discord-active text-white;
+  }
+  .server-icon {
+    @apply w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all duration-200 flex items-center justify-center cursor-pointer bg-discord-dark hover:bg-discord-brand text-discord-text;
+  }
+  .server-icon.active {
+    @apply rounded-[16px] bg-discord-brand;
+  }
+  .message-container:hover {
+    @apply bg-discord-hover/[0.06];
+  }
+}
